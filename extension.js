@@ -9,27 +9,27 @@ let logFilePath
 /**
  * @param {vscode.ExtensionContext} context
  */
-async function activate (context) {
-    const folderUri = await vscode.window.showOpenDialog({
-				canSelectFiles: false,
-				canSelectFolders: true,
-				canSelectMany: false,
-				openLabel: 'Select Folder for Log File'
-		})
+async function activate(context) {
+	const folderUri = await vscode.window.showOpenDialog({
+		canSelectFiles: false,
+		canSelectFolders: true,
+		canSelectMany: false,
+		openLabel: 'Select Folder for Log File'
+	})
 
-		if (!folderUri || folderUri.length === 0) {
-				vscode.window.showErrorMessage('No folder selected. Logging will not work.')
+	if (!folderUri || folderUri.length === 0) {
+		vscode.window.showErrorMessage('No folder selected. Logging will not work.')
 
-				return
-		}
+		return
+	}
 
-		// Set the log file path to the selected folder
-		logFilePath = path.join(folderUri[0].fsPath, 'user-events.log')
+	// Set the log file path to the selected folder
+	logFilePath = path.join(folderUri[0].fsPath, 'user-events.log')
 
-		// Ensure the log file exists
-		if (!fs.existsSync(logFilePath)) {
-				fs.writeFileSync(logFilePath, '', 'utf8')
-		}
+	// Ensure the log file exists
+	if (!fs.existsSync(logFilePath)) {
+		fs.writeFileSync(logFilePath, '', 'utf8')
+	}
 
 	const startTrackingCommand = vscode.commands.registerCommand('revelo-tasks-tracker.startTracking', function () {
 		// pegar input do root do folder e usar como filePath pro logger
@@ -121,6 +121,22 @@ async function activate (context) {
 
 			vscode.window.onDidCloseTerminal(() => {
 				logEvent({ action: 'terminal_closed' })
+			}),
+
+			vscode.commands.registerCommand('revelo-tasks-tracker.handleWorkspaceSetup', async (args) => {
+				console.log(args)
+			}),
+
+			vscode.window.registerUriHandler({
+				handleUri(uri) {
+					console.log(uri)
+
+					// do something with the provided uri
+					// vscode.commands.executeCommand('revelo-tasks-tracker.handleWorkspaceSetup', {
+					// 	arg1,
+					// 	arg2
+					// })
+				}
 			})
 		)
 	})
@@ -128,7 +144,7 @@ async function activate (context) {
 	context.subscriptions.push(startTrackingCommand)
 }
 
-function logEvent (event) {
+function logEvent(event) {
 	if (!logFilePath) return
 
 	const timestamp = new Date().toISOString()
@@ -150,7 +166,7 @@ function logEvent (event) {
 	}
 }
 
-function deactivate () {
+function deactivate() {
 	isTracking = false
 
 	logEvent({
