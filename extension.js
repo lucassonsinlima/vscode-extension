@@ -9,22 +9,27 @@ let logFilePath
 /**
  * @param {vscode.ExtensionContext} context
  */
-function activate (context) {
-	logFilePath = path.join(context.globalStorageUri.fsPath, 'user-events.log')
+async function activate (context) {
+    const folderUri = await vscode.window.showOpenDialog({
+				canSelectFiles: false,
+				canSelectFolders: true,
+				canSelectMany: false,
+				openLabel: 'Select Folder for Log File'
+		})
 
-	if (!fs.existsSync(context.globalStorageUri.fsPath)) {
-		fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true })
-	}
+		if (!folderUri || folderUri.length === 0) {
+				vscode.window.showErrorMessage('No folder selected. Logging will not work.')
 
-	const workspaceFolders = vscode.workspace.workspaceFolders
+				return
+		}
 
-	if (workspaceFolders && workspaceFolders.length > 0) {
-		logFilePath = path.join(workspaceFolders[0].uri.fsPath, 'user-events.log')
-	} else {
-		vscode.window.showErrorMessage('No workspace folder found. Logging will not work.')
+		// Set the log file path to the selected folder
+		logFilePath = path.join(folderUri[0].fsPath, 'user-events.log')
 
-		return
-	}
+		// Ensure the log file exists
+		if (!fs.existsSync(logFilePath)) {
+				fs.writeFileSync(logFilePath, '', 'utf8')
+		}
 
 	const startTrackingCommand = vscode.commands.registerCommand('revelo-tasks-tracker.startTracking', function () {
 		// pegar input do root do folder e usar como filePath pro logger
@@ -49,6 +54,22 @@ function activate (context) {
 			vscode.workspace.onDidOpenTextDocument((document) => {
 				documentTextMap.set(document.uri.toString(), document.getText())
 			}),
+
+			vscode.workspace.onDidChangeTextDocument(
+				debounce((event) => {
+					const editor = vscode.window.activeTextEditor
+
+					if (editor && event.document === editor.document) {
+						logEvent({
+							action: 'text_document_changed',
+							message: {
+								uri: editor.document.uri.toString(),
+								text: editor.document.getText()
+							}
+						})
+					}
+				}, 1000)
+			),
 
 			vscode.commands.registerCommand('revelo-tasks-tracker.clipboardCopy', async (event) => {
 				await vscode.commands.executeCommand('editor.action.clipboardCopyAction')
