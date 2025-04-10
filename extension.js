@@ -1,34 +1,142 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-const vscode = require('vscode');
+const vscode = require('vscode')
+const fs = require('fs')
+const path = require('path')
+const debounce = require('lodash.debounce')
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+let isTracking = false
+let logFilePath
 
 /**
  * @param {vscode.ExtensionContext} context
  */
-function activate(context) {
+function activate (context) {
+	logFilePath = path.join(context.globalStorageUri.fsPath, 'user-events.log')
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "revelo-tasks-tracker" is now active!');
+	if (!fs.existsSync(context.globalStorageUri.fsPath)) {
+		fs.mkdirSync(context.globalStorageUri.fsPath, { recursive: true })
+	}
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('revelo-tasks-tracker.helloWorld', function () {
-		// The code you place here will be executed every time your command is executed
+	const workspaceFolders = vscode.workspace.workspaceFolders
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Revelo Tasks Tracker!');
-	});
+	if (workspaceFolders && workspaceFolders.length > 0) {
+		logFilePath = path.join(workspaceFolders[0].uri.fsPath, 'user-events.log')
+	} else {
+		vscode.window.showErrorMessage('No workspace folder found. Logging will not work.')
 
-	context.subscriptions.push(disposable);
+		return
+	}
+
+	const startTrackingCommand = vscode.commands.registerCommand('revelo-tasks-tracker.startTracking', function () {
+		// pegar input do root do folder e usar como filePath pro logger
+
+		if (isTracking) {
+			vscode.window.showInformationMessage('Tracking is already enabled.')
+			return
+		}
+
+		isTracking = true
+
+		vscode.window.showInformationMessage('Tracking Started')
+
+		logEvent({
+			action: 'tracking_started',
+			message: 'Tracking started'
+		})
+
+		const documentTextMap = new Map()
+
+		context.subscriptions.push(
+			vscode.workspace.onDidOpenTextDocument((document) => {
+				documentTextMap.set(document.uri.toString(), document.getText())
+			}),
+
+			vscode.commands.registerCommand('revelo-tasks-tracker.clipboardCopy', async (event) => {
+				await vscode.commands.executeCommand('editor.action.clipboardCopyAction')
+
+				const editor = vscode.window.activeTextEditor
+
+				if (editor) {
+					const selectedText = editor.document.getText(editor.selection)
+
+					logEvent({
+						action: 'copy',
+						message: {
+							text: editor.document.getText(),
+							selectedText: selectedText
+						}
+					})
+				}
+			}),
+
+			vscode.commands.registerCommand('revelo-tasks-tracker.clipboardPaste', async () => {
+				await vscode.commands.executeCommand('editor.action.clipboardPasteAction')
+
+				const editor = vscode.window.activeTextEditor
+
+				if (editor) {
+					logEvent({
+						action: 'paste',
+						message: {
+							text: editor.document.getText()
+						}
+					})
+				}
+			}),
+
+			vscode.window.onDidOpenTerminal(() => {
+				logEvent({ action: 'terminal_opened' })
+			}),
+
+			vscode.window.onDidStartTerminalShellExecution((event) => {
+				logEvent({
+					action: 'terminal_shell_execution_started',
+					message: {
+						name: event.terminal.name,
+						command: event.execution.commandLine.value,
+						path: event.execution.cwd
+					}
+				})
+			}),
+
+			vscode.window.onDidCloseTerminal(() => {
+				logEvent({ action: 'terminal_closed' })
+			})
+		)
+	})
+
+	context.subscriptions.push(startTrackingCommand)
 }
 
-// This method is called when your extension is deactivated
-function deactivate() {}
+function logEvent (event) {
+	if (!logFilePath) return
+
+	const timestamp = new Date().toISOString()
+
+	const logMessage = JSON.stringify({
+		action: event.action,
+		timestamp: timestamp,
+		message: event.message
+	}, null, 2)
+
+	try {
+		if (!fs.existsSync(logFilePath)) {
+			fs.writeFileSync(logFilePath, '', 'utf8')
+		}
+
+		fs.appendFileSync(logFilePath, logMessage, 'utf8')
+	} catch (error) {
+		console.error('Failed to write to log file:', error)
+	}
+}
+
+function deactivate () {
+	isTracking = false
+
+	logEvent({
+		action: 'tracking_stopped',
+		message: 'Tracking stopped'
+	})
+}
 
 module.exports = {
 	activate,

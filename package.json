@@ -12,10 +12,34 @@
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "revelo-tasks-tracker.helloWorld",
-      "title": "Hello World"
-    }]
+    "commands": [
+      {
+        "command": "revelo-tasks-tracker.startTracking",
+        "title": "Start Tracking"
+      },
+      {
+        "command": "revelo-tasks-tracker.clipboardCopy",
+        "title": "Custom Copy"
+      },
+      {
+        "command": "revelo-tasks-tracker.clipboardPaste",
+        "title": "Custom Paste"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "revelo-tasks-tracker.clipboardCopy",
+        "key": "ctrl+c",
+        "mac": "cmd+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "revelo-tasks-tracker.clipboardPaste",
+        "key": "ctrl+v",
+        "mac": "cmd+v",
+        "when": "editorTextFocus"
+      }
+    ]
   },
   "scripts": {
     "lint": "eslint .",
@@ -23,11 +47,14 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.99.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
-    "eslint": "^9.23.0",
+    "@types/vscode": "^1.99.0",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.23.0"
+  },
+  "dependencies": {
+    "lodash.debounce": "^4.0.8"
   }
 }
