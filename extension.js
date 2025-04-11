@@ -23,17 +23,13 @@ async function activate(context) {
 		return
 	}
 
-	// Set the log file path to the selected folder
 	logFilePath = path.join(folderUri[0].fsPath, 'user-events.log')
 
-	// Ensure the log file exists
 	if (!fs.existsSync(logFilePath)) {
 		fs.writeFileSync(logFilePath, '', 'utf8')
 	}
 
 	const startTrackingCommand = vscode.commands.registerCommand('revelo-tasks-tracker.startTracking', function () {
-		// pegar input do root do folder e usar como filePath pro logger
-
 		if (isTracking) {
 			vscode.window.showInformationMessage('Tracking is already enabled.')
 			return
