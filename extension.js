@@ -30,8 +30,10 @@ async function activate(context) {
 	}
 
 	const startTrackingCommand = vscode.commands.registerCommand('revelo-tasks-tracker.startTracking', function () {
+
 		if (isTracking) {
 			vscode.window.showInformationMessage('Tracking is already enabled.')
+
 			return
 		}
 
@@ -68,6 +70,7 @@ async function activate(context) {
 			),
 
 			vscode.commands.registerCommand('revelo-tasks-tracker.clipboardCopy', async (event) => {
+
 				await vscode.commands.executeCommand('editor.action.clipboardCopyAction')
 
 				const editor = vscode.window.activeTextEditor
